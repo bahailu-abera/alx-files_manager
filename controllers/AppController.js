@@ -3,11 +3,21 @@ import dbClient from '../utils/db';
 
 class AppController {
   static getStatus(_, res) {
-    res.send({ redis: redisClient.isAlive(), db: dbClient.isAlive() });
+    res.status(200).json({ redis: redisClient.isAlive(), db: dbClient.isAlive() });
   }
 
   static getStats(_, res) {
-    res.send({ users: dbClient.nbUsers(), files: dbClient.nbFiles() });
+    const usersCount = dbClient.nbUsers();
+    const filesCount = dbClient.nbFiles();
+
+    Promise.all([usersCount, filesCount])
+      .then(([users, files]) => {
+        res.status(200).json({ users, files });
+      })
+      .catch((error) => {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error ' });
+      });
   }
 }
 
