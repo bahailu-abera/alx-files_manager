@@ -2,6 +2,7 @@ import dbClient from '../utils/db';
 import sha1Hash from '../utils/utils';
 
 class UsersController {
+  /* eslint-disable-next-line */
   static createUser(req, res) {
     const { email, password } = req.body;
 
@@ -15,6 +16,7 @@ class UsersController {
 
     dbClient.client.db().collection('users')
       .findOne({ email })
+    /* eslint-disable-next-line */
       .then((existingUser) => {
         if (existingUser) {
           return res.status(400).json({ error: 'Already exist' });
