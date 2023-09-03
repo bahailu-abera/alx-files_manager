@@ -1,3 +1,4 @@
+import auth from '../utils/auth';
 import dbClient from '../utils/db';
 import sha1Hash from '../utils/utils';
 
@@ -47,6 +48,18 @@ class UsersController {
         console.error(error);
         return res.status(500).json({ error: 'Internal server error' });
       });
+  }
+
+  static async getMe(req, res) {
+    const user = await auth.getUserFromToken(req);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { _id, email } = user;
+
+    return res.status(200).json({ _id, email });
   }
 }
 
