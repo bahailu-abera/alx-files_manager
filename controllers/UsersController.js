@@ -59,7 +59,7 @@ class UsersController {
 
     const { _id, email } = user;
 
-    return res.status(200).json({ _id, email });
+    return res.status(200).json({ id: _id, email });
   }
 }
 
