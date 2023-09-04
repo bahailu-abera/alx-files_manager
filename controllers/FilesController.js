@@ -70,7 +70,9 @@ class FilesController {
 
       const newFile = { id: result.insertedId, ...file };
 
-      newFile.parentId = parseInt(newFile.parentId, 10);
+      if (parentId === 0) {
+        newFile.parentId = parseInt(newFile.parentId, 10);
+      }
 
       return res.status(201).json({ ...newFile });
     }
