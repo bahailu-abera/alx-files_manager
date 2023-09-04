@@ -12,7 +12,7 @@ function valideType(type) {
   return acceptedTypes.includes(type);
 }
 
-class FileController {
+class FilesController {
   static async postUpload(req, res) {
     const user = await auth.getUserFromToken(req);
 
@@ -91,6 +91,61 @@ class FileController {
       id: result.insertedId, userId, name, type, isPublic, parentId,
     });
   }
+
+  static async getShow(req, res) {
+    const { id } = req.params;
+
+    const user = await auth.getUserFromToken(req);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const file = await dbClient.client.db().collection('files')
+      .findOne(
+        { _id: new ObjectId(id), userId: user._id },
+        { projection: { localPath: 0 } },
+      );
+
+    if (!file) {
+      return res.status(400).json({ error: 'Not found' });
+    }
+
+    return res.status(200).json({ ...file });
+  }
+
+  static async getIndex(req, res) {
+    const user = await auth.getUserFromToken(req);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const parentId = req.query.parentId || 0;
+    const page = parseInt(req.query.page, 10) || 0;
+    const limit = 20;
+    const skip = page * limit;
+
+    const files = await dbClient.client.db().collection('files').aggregate([
+      {
+        $match: {
+          userId: user._id,
+          parentId,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
+      },
+      {
+        $project: { localPath: 0 }, // Exclude localPath from the projected fields
+      },
+    ]).toArray();
+
+    return res.status(200).json(files);
+  }
 }
 
-module.exports = FileController;
+module.exports = FilesController;
