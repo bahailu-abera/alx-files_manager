@@ -114,7 +114,6 @@ class FilesController {
     const file = await dbClient.client.db().collection('files')
       .findOne(
         { _id: new ObjectId(id), userId: user._id },
-        { projection: { localPath: 0 } },
       );
 
     if (!file) {
@@ -125,9 +124,12 @@ class FilesController {
       file.parentId = parseInt(file.parentId, 10);
     }
 
-    delete file._id;
+    file.id = file._id;
 
-    return res.status(200).json({ id, ...file });
+    delete file._id;
+    delete file.localPath;
+
+    return res.status(200).json({ ...file });
   }
 
   static async getIndex(req, res) {
@@ -139,9 +141,7 @@ class FilesController {
 
     let parentId = req.query.parentId || '0';
 
-    if (parentId !== '0') {
-      parentId = new ObjectId(parentId);
-    }
+    parentId = new ObjectId(parentId);
 
     const page = parseInt(req.query.page, 10) || 0;
     const limit = 20;
@@ -150,7 +150,6 @@ class FilesController {
     const files = await dbClient.client.db().collection('files').aggregate([
       {
         $match: {
-          userId: user._id,
           parentId,
         },
       },
