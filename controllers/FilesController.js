@@ -72,7 +72,7 @@ class FilesController {
 
       newFile.parentId = parseInt(newFile.parentId, 10);
 
-      return res.status(200).json({ ...newFile });
+      return res.status(201).json({ ...newFile });
     }
 
     const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -116,14 +116,16 @@ class FilesController {
       );
 
     if (!file) {
-      return res.status(400).json({ error: 'Not found' });
+      return res.status(404).json({ error: 'Not found' });
     }
 
     if (file.parentId === '0') {
       file.parentId = parseInt(file.parentId, 10);
     }
 
-    return res.status(200).json({ ...file });
+    delete file._id;
+
+    return res.status(200).json({ id, ...file });
   }
 
   static async getIndex(req, res) {
@@ -161,11 +163,57 @@ class FilesController {
       },
     ]).toArray();
 
-    if (files.parentId === '0') {
-      files.parentId = parseInt(files.parentId, 10);
+    for (const file of files) {
+      file.id = file._id;
+
+      delete file._id;
+
+      if (file.parentId === '0') {
+        file.parentId = parseInt(file.parentId, 10);
+      }
     }
 
     return res.status(200).json(files);
+  }
+
+  static async updateFilePublicStatus(req, res, isPublic) {
+    const user = await auth.getUserFromToken(req);
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const file = await dbClient.client.db().collection('files')
+      .findOne({ _id: new ObjectId(id), userId: user._id });
+
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    await dbClient.client.db().collection('files')
+      .updateOne({ _id: new ObjectId(id) }, { $set: { isPublic } });
+
+    file.id = file._id;
+
+    delete file._id;
+    delete file.localPath;
+
+    if (file.parentId === '0') {
+      file.parentId = parseInt(file.parentId, 10);
+    }
+
+    const updatedFile = { ...file, isPublic };
+
+    return res.status(200).json({ ...updatedFile });
+  }
+
+  static async putPublish(req, res) {
+    return FilesController.updateFilePublicStatus(req, res, true);
+  }
+
+  static async putUnpublish(req, res) {
+    return FilesController.updateFilePublicStatus(req, res, false);
   }
 }
 
