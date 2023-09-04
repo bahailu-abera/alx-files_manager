@@ -156,7 +156,6 @@ class FilesController {
     const files = await dbClient.client.db().collection('files').aggregate([
       {
         $match: {
-          userId: user._id,
           parentId,
         },
       },
