@@ -225,7 +225,7 @@ class FilesController {
   }
 
   static async getFile(req, res) {
-    const user = await auth.getUserFromAuthorization(req);
+    const user = await auth.getUserFromToken(req);
     const { id } = req.params;
 
     const file = await dbClient.client.db().collection('files')
@@ -235,7 +235,7 @@ class FilesController {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    if (!file.isPublic && (!user || user._id !== file.userId)) {
+    if (!file.isPublic && (!user || user._id.toString() !== file.userId.toString())) {
       return res.status(404).json({ error: 'Not found' });
     }
 
