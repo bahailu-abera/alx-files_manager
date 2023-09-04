@@ -2,9 +2,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
 
 import { join } from 'path';
-import { createWriteStream, mkdirSync, existsSync } from 'fs';
+import {
+  createWriteStream, createReadStream, mkdirSync, existsSync,
+} from 'fs';
 import dbClient from '../utils/db';
 import auth from '../utils/auth';
+
+const mime = require('mime-types');
+
+const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
 
 function valideType(type) {
   const acceptedTypes = ['folder', 'image', 'file'];
@@ -77,8 +83,6 @@ class FilesController {
       return res.status(201).json({ ...newFile });
     }
 
-    const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
-
     if (!existsSync(folderPath)) {
       mkdirSync(folderPath, { recursive: true });
     }
@@ -141,7 +145,9 @@ class FilesController {
 
     let parentId = req.query.parentId || '0';
 
-    parentId = new ObjectId(parentId);
+    if (parentId !== '0') {
+      parentId = new ObjectId(parentId);
+    }
 
     const page = parseInt(req.query.page, 10) || 0;
     const limit = 20;
@@ -216,6 +222,39 @@ class FilesController {
 
   static async putUnpublish(req, res) {
     return FilesController.updateFilePublicStatus(req, res, false);
+  }
+
+  static async getFile(req, res) {
+    const user = await auth.getUserFromAuthorization(req);
+    const { id } = req.params;
+
+    const file = await dbClient.client.db().collection('files')
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    if (!file.isPublic && (!user || user._id !== file.userId)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    if (file.type === 'folder') {
+      return res.status(400).json({ error: 'A folder doesn\'t have content' });
+    }
+
+    const filePath = file.localPath;
+
+    if (!existsSync(filePath)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    const mimeType = mime.lookup(file.name);
+    const fileStream = createReadStream(filePath);
+
+    res.set('Content-Type', mimeType);
+
+    return fileStream.pipe(res);
   }
 }
 
