@@ -59,10 +59,18 @@ class FilesController {
       parentId,
     };
 
+    if (file.parentId !== 0) {
+      file.parentId = new ObjectId(file.parentId);
+    } else {
+      file.parentId = file.parentId.toString();
+    }
+
     if (type === 'folder') {
       const result = await dbClient.client.db().collection('files').insertOne({ ...file });
 
       const newFile = { id: result.insertedId, ...file };
+
+      newFile.parentId = parseInt(newFile.parentId, 10);
 
       return res.status(200).json({ ...newFile });
     }
@@ -79,8 +87,6 @@ class FilesController {
     const decodedData = Buffer.from(data, 'base64');
     fileStream.write(decodedData);
     fileStream.end();
-
-    file.parentId = new ObjectId(file.parentId);
 
     file.localPath = filePath;
 
