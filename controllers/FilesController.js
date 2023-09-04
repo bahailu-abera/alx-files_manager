@@ -101,13 +101,13 @@ class FilesController {
   }
 
   static async getShow(req, res) {
-    const { id } = req.params;
-
     const user = await auth.getUserFromToken(req);
 
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const { id } = req.params;
 
     const file = await dbClient.client.db().collection('files')
       .findOne(
@@ -117,6 +117,10 @@ class FilesController {
 
     if (!file) {
       return res.status(400).json({ error: 'Not found' });
+    }
+
+    if (file.parentId === '0') {
+      file.parentId = parseInt(file.parentId, 10);
     }
 
     return res.status(200).json({ ...file });
@@ -129,7 +133,12 @@ class FilesController {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const parentId = req.query.parentId || 0;
+    let parentId = req.query.parentId || '0';
+
+    if (parentId !== '0') {
+      parentId = new ObjectId(parentId);
+    }
+
     const page = parseInt(req.query.page, 10) || 0;
     const limit = 20;
     const skip = page * limit;
@@ -151,6 +160,10 @@ class FilesController {
         $project: { localPath: 0 }, // Exclude localPath from the projected fields
       },
     ]).toArray();
+
+    if (files.parentId === '0') {
+      files.parentId = parseInt(files.parentId, 10);
+    }
 
     return res.status(200).json(files);
   }
