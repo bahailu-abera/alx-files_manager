@@ -80,6 +80,8 @@ class FilesController {
     fileStream.write(decodedData);
     fileStream.end();
 
+    file.parentId = new ObjectId(file.parentId);
+
     file.localPath = filePath;
 
     const result = await dbClient.client
