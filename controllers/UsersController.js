@@ -1,6 +1,9 @@
+import Queue from 'bull';
 import auth from '../utils/auth';
 import dbClient from '../utils/db';
 import sha1Hash from '../utils/utils';
+
+const userQueue = new Queue('userQueue');
 
 class UsersController {
   /* eslint-disable-next-line */
@@ -35,6 +38,8 @@ class UsersController {
           .then((result) => {
             const { insertedId } = result;
             const { email } = newUser;
+
+            userQueue.add({ userId: insertedId });
 
             return res.status(201).json({ id: insertedId, email });
           })
