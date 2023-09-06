@@ -5,8 +5,11 @@ import { join } from 'path';
 import {
   createWriteStream, createReadStream, mkdirSync, existsSync,
 } from 'fs';
+import Queue from 'bull';
 import dbClient from '../utils/db';
 import auth from '../utils/auth';
+
+const fileQueue = new Queue('fileQueue');
 
 const mime = require('mime-types');
 
@@ -100,6 +103,10 @@ class FilesController {
       .db()
       .collection('files')
       .insertOne(file);
+
+    if (file.type === 'image') {
+      fileQueue.add({ userId: user._id, fileId: result.insertedId });
+    }
 
     return res.status(201).json({
       id: result.insertedId, userId, name, type, isPublic, parentId,
@@ -226,6 +233,7 @@ class FilesController {
   static async getFile(req, res) {
     const user = await auth.getUserFromToken(req);
     const { id } = req.params;
+    const { size } = req.query.size || '0';
 
     const file = await dbClient.client.db().collection('files')
       .findOne({ _id: new ObjectId(id) });
@@ -242,7 +250,7 @@ class FilesController {
       return res.status(400).json({ error: 'A folder doesn\'t have content' });
     }
 
-    const filePath = file.localPath;
+    const filePath = size === '0' ? file.localPath : `${file.localPath}_${size}`;
 
     if (!existsSync(filePath)) {
       return res.status(404).json({ error: 'Not found' });
